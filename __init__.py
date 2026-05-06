@@ -6,7 +6,7 @@ Generates slip-casting style plaster mold boxes from 3D models.
 bl_info = {
     "name": "FormCraft",
     "author": "",
-    "version": (0, 1, 0),
+    "version": (0, 2, 0),
     "blender": (4, 0, 0),
     "location": "View3D > N-Panel > FormCraft",
     "description": "Generate slip-casting plaster molds with registration keys",

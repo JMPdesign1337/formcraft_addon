@@ -10,7 +10,14 @@ class FORMCRAFT_PT_panel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        settings = context.scene.formcraft
+
+        row = layout.row(align=True)
+        row.operator("formcraft.import_file", text="Import", icon="IMPORT")
+        row.operator("formcraft.export_stl", text="Export", icon="EXPORT")
+        row.operator("formcraft.reset_project", text="Reset", icon="FILE_REFRESH")
+        row.operator("formcraft.new_project", text="New", icon="FILE_NEW")
+
+        layout.separator()
 
         layout.operator(
             "formcraft.generate_mold",

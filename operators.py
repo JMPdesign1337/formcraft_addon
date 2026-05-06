@@ -116,6 +116,79 @@ class FORMCRAFT_OT_export_stl(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
 
+class FORMCRAFT_OT_import_file(bpy.types.Operator):
+    bl_idname = "formcraft.import_file"
+    bl_label = "Import File"
+    bl_description = "Import an STL or OBJ file to use as a master model"
+
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+    filename: bpy.props.StringProperty(name="File Name", default="")
+    directory: bpy.props.StringProperty(subtype="DIR_PATH")
+    filter_glob: bpy.props.StringProperty(default="*.stl;*.obj", options={"HIDDEN"})
+
+    def execute(self, context):
+        import os
+        path = self.filepath
+        if not path:
+            return {"CANCELLED"}
+
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".stl":
+            bpy.ops.import_mesh.stl(filepath=path)
+        elif ext == ".obj":
+            bpy.ops.import_scene.obj(filepath=path)
+        else:
+            self.report({"ERROR"}, f"Unsupported file type: {ext}")
+            return {"CANCELLED"}
+
+        imported = context.selected_objects
+        if imported:
+            context.view_layer.objects.active = imported[0]
+            self.report({"INFO"}, f"Imported {len(imported)} object(s)")
+        return {"FINISHED"}
+
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {"RUNNING_MODAL"}
+
+
+class FORMCRAFT_OT_reset_project(bpy.types.Operator):
+    bl_idname = "formcraft.reset_project"
+    bl_label = "Reset Project"
+    bl_description = "Delete generated molds and unhide master objects"
+
+    def execute(self, context):
+        deleted = 0
+        unhidden = 0
+        objs_to_delete = [
+            obj for obj in bpy.data.objects
+            if any(prefix in obj.name for prefix in ["FormCraftMold", "KeyHole", "PouringHole", "Vent_", "SplitCutter"])
+        ]
+
+        for obj in objs_to_delete:
+            bpy.data.objects.remove(obj, do_unlink=True)
+            deleted += 1
+
+        for obj in bpy.data.objects:
+            if obj.name == "MasterCopy" or obj.hide_get() and obj.name.endswith("_Master"):
+                obj.hide_set(False)
+                obj.hide_render = False
+                unhidden += 1
+
+        self.report({"INFO"}, f"Reset complete. Deleted {deleted} objects, unhidden {unhidden} masters.")
+        return {"FINISHED"}
+
+
+class FORMCRAFT_OT_new_project(bpy.types.Operator):
+    bl_idname = "formcraft.new_project"
+    bl_label = "New Project"
+    bl_description = "Open a new Blender file (will prompt to save unsaved changes)"
+
+    def execute(self, context):
+        bpy.ops.wm.read_homefile(app_template="")
+        return {"FINISHED"}
+
+
 class FORMCRAFT_OT_check_update(bpy.types.Operator):
     bl_idname = "formcraft.check_update"
     bl_label = "Check for Updates"
@@ -219,6 +292,9 @@ class FORMCRAFT_OT_install_local(bpy.types.Operator):
 def register():
     bpy.utils.register_class(FORMCRAFT_OT_generate_mold)
     bpy.utils.register_class(FORMCRAFT_OT_export_stl)
+    bpy.utils.register_class(FORMCRAFT_OT_import_file)
+    bpy.utils.register_class(FORMCRAFT_OT_reset_project)
+    bpy.utils.register_class(FORMCRAFT_OT_new_project)
     bpy.utils.register_class(FORMCRAFT_OT_check_update)
     bpy.utils.register_class(FORMCRAFT_OT_update_addon)
     bpy.utils.register_class(FORMCRAFT_OT_install_local)
@@ -228,5 +304,8 @@ def unregister():
     bpy.utils.unregister_class(FORMCRAFT_OT_install_local)
     bpy.utils.unregister_class(FORMCRAFT_OT_update_addon)
     bpy.utils.unregister_class(FORMCRAFT_OT_check_update)
+    bpy.utils.unregister_class(FORMCRAFT_OT_new_project)
+    bpy.utils.unregister_class(FORMCRAFT_OT_reset_project)
+    bpy.utils.unregister_class(FORMCRAFT_OT_import_file)
     bpy.utils.unregister_class(FORMCRAFT_OT_export_stl)
     bpy.utils.unregister_class(FORMCRAFT_OT_generate_mold)

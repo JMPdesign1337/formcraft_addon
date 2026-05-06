@@ -13,13 +13,12 @@ import zipfile
 from pathlib import Path
 
 
-def get_addon_path():
-    prefs = bpy.context.preferences
-    for path in prefs.filepaths.script_directories:
-        addon_path = os.path.join(path.directory, "addons", "formcraft_addon")
-        if os.path.isdir(addon_path):
-            return addon_path
-    return None
+def get_addon_install_path():
+    scripts_path = bpy.utils.user_resource("SCRIPTS")
+    if not scripts_path:
+        return None
+    addon_dir = os.path.join(scripts_path, "addons", "formcraft_addon")
+    return addon_dir
 
 
 def get_current_version():
@@ -98,11 +97,20 @@ def check_github_updates(repo, use_prereleases=False):
     return best_version, download_url, release_notes
 
 
+def _find_source_dir(extract_dir):
+    extracted_items = os.listdir(extract_dir)
+
+    if len(extracted_items) == 1:
+        candidate = os.path.join(extract_dir, extracted_items[0])
+        if os.path.isdir(candidate) and "__init__.py" in os.listdir(candidate):
+            return candidate
+    return extract_dir
+
+
 def download_and_install(download_url):
-    addon_dir = get_addon_path()
-    if addon_dir is None:
-        scripts_path = bpy.utils.user_resource("SCRIPTS")
-        addon_dir = os.path.join(scripts_path, "addons", "formcraft_addon")
+    addon_dir = get_addon_install_path()
+    if not addon_dir:
+        return False, "Could not determine Blender addon path"
 
     temp_dir = tempfile.mkdtemp(prefix="formcraft_update_")
     zip_path = os.path.join(temp_dir, "update.zip")
@@ -117,20 +125,12 @@ def download_and_install(download_url):
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(extract_dir)
 
-        extracted_items = os.listdir(extract_dir)
-
-        if len(extracted_items) == 1:
-            source_dir = os.path.join(extract_dir, extracted_items[0])
-            if os.path.isdir(source_dir) and "__init__.py" in os.listdir(source_dir):
-                pass
-            else:
-                source_dir = extract_dir
-        else:
-            source_dir = extract_dir
+        source_dir = _find_source_dir(extract_dir)
 
         if os.path.exists(addon_dir):
             shutil.rmtree(addon_dir)
 
+        os.makedirs(os.path.dirname(addon_dir), exist_ok=True)
         shutil.copytree(source_dir, addon_dir)
 
         return True, f"Installed to: {addon_dir}"
@@ -143,10 +143,9 @@ def download_and_install(download_url):
 
 
 def install_local_zip(zip_path):
-    addon_dir = get_addon_path()
-    if addon_dir is None:
-        scripts_path = bpy.utils.user_resource("SCRIPTS")
-        addon_dir = os.path.join(scripts_path, "addons", "formcraft_addon")
+    addon_dir = get_addon_install_path()
+    if not addon_dir:
+        return False, "Could not determine Blender addon path"
 
     if not os.path.isfile(zip_path):
         return False, f"File not found: {zip_path}"
@@ -158,20 +157,12 @@ def install_local_zip(zip_path):
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(extract_dir)
 
-        extracted_items = os.listdir(extract_dir)
-
-        if len(extracted_items) == 1:
-            source_dir = os.path.join(extract_dir, extracted_items[0])
-            if os.path.isdir(source_dir) and "__init__.py" in os.listdir(source_dir):
-                pass
-            else:
-                source_dir = extract_dir
-        else:
-            source_dir = extract_dir
+        source_dir = _find_source_dir(extract_dir)
 
         if os.path.exists(addon_dir):
             shutil.rmtree(addon_dir)
 
+        os.makedirs(os.path.dirname(addon_dir), exist_ok=True)
         shutil.copytree(source_dir, addon_dir)
 
         return True, f"Installed from: {zip_path}"
