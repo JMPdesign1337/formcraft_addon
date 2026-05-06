@@ -1,0 +1,32 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(grep -oP '"version":\s*\(\s*\K[\d, ]+' __init__.py | sed 's/[^0-9]/./g' | sed 's/\.$//')
+          echo "VERSION_TAG=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create ZIP
+        run: zip -r formcraft_addon.zip . -x "*.git*" -x ".github/*"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION_TAG }}
+          name: Release ${{ steps.get_version.outputs.VERSION_TAG }}
+          files: formcraft_addon.zip
+          generate_release_notes: true
